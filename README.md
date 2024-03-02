@@ -1,25 +1,63 @@
-## Search and collection of vacancies for a programmer
-This project collects data on vacancies on HeadHunter and SuperJob, placing them in a table.
 
-### Download and installation
-You need to download this project to run it.
+## Salary statistics for programmers in Moscow
 
-After downloading, you need to unzip the project and open it in any development environment.
+This script provides statistics on the average salaries of programmers in Moscow using data from HeadHunter and SuperJob.
 
-You need to create an additional `.env` file to specify a Secret Key with which you can connect to the API.
+## Installation
 
-Get Secret key: [clickable](https://api.superjob.ru/info/).
+1. Make sure you have Python installed. You can download it from [official website](https://www.python.org/downloads/).
 
-Example:
-```env
-SECRET_KEY_SUPERJOB=YOUR_SJ_KEY
+2. Download or clone the repository:
+
+   ```bash
+   git clone https://github.com/abfalexs/Vacancies-for-programmers.git
+   ```
+
+3. Create a virtual environment (recommended):
+
+   ```bash
+   python -m venv venv
+   ```
+
+4. Activate the virtual environment:
+
+   - On Windows:
+
+     ```bash
+     venv\Scripts\activate
+     ```
+
+   - On macOS and Linux:
+
+     ```bash
+     source venv/bin/activate
+     ```
+
+5. Install dependencies:
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+6. Create a `.env` file in the project root and add your SuperJob key to it:
+
+   ```
+   SECRET_KEY_SUPERJOB=your_key
+   ```
+
+## Launch
+
+To get statistics, run the script:
+
+```bash
+python main.py
 ```
 
-### Launch
-To start, you need to open a terminal and write the following:
-```
-python3 main.py
-```
-The project will be launched after this command.
+## Results
 
-You will have to wait some time until the vacancies collection process is completed.
+After executing the script, you will receive statistics on the average salary, the number of vacancies found and processed for each programming language.
+
+## Note
+
+The script uses the HeadHunter and SuperJob APIs to obtain data. Please note that a key from SuperJob is required to access their API.
+You can get the SuperJob key from the [official website](https://api.superjob.ru/info/?from_refresh=1).
