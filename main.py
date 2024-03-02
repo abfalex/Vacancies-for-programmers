@@ -8,17 +8,19 @@ from terminaltables import AsciiTable
 
 
 def predict_salary(salary_from, salary_to):
-    if salary_from is not None and salary_to is not None:
+    if salary_from and salary_to:
         return (salary_to + salary_from) / 2
-    elif salary_from is not None:
+
+    elif salary_from:
         return salary_from * 1.2
-    elif salary_to is not None:
+
+    elif salary_to:
         return salary_to * 0.8
 
     return None
 
 
-def predict_rub_salary_sj(vacancy_info):
+def predict_rub_salary_for_sj(vacancy_info):
     salary_from = vacancy_info.get('payment_from')
     salary_to = vacancy_info.get('payment_to')
     vacancy_currency = vacancy_info.get('currency')
@@ -34,19 +36,22 @@ def predict_rub_salary_sj(vacancy_info):
     return None
 
 
-def predict_rub_salary_hh(vacancy_info):
-    vacancy_salary = vacancy_info['salary'] if vacancy_info['salary'] else None
-    vacancy_currency = vacancy_salary['currency'] if vacancy_info['salary'] else None
+def predict_rub_salary_for_hh(vacancy_info):
+    vacancy_salary = vacancy_info.get('salary', None)
 
-    if vacancy_currency != "RUR":
-        return None
+    if vacancy_salary and vacancy_salary['currency']:
+        if vacancy_salary['currency'] != "RUR":
+            return None
 
-    salary_from = vacancy_salary.get('from')
-    salary_to = vacancy_salary.get('to')
+        salary_from = vacancy_salary.get('from')
+        salary_to = vacancy_salary.get('to')
 
-    salary = predict_salary(salary_from, salary_to)
+        salary = predict_salary(salary_from, salary_to)
 
-    return salary
+        if salary:
+            return salary
+
+    return None
 
 
 def fetch_vacancies_hh():
@@ -55,11 +60,13 @@ def fetch_vacancies_hh():
     vacancies_statistic = {}
 
     for language in languages:
-        params = {'text': f'Программист {language}', 'area': 1}
+        MOSCOW_ID = 1
 
-        total_vacancies = 0
+        params = {'text': f'Программист {language}', 'area': MOSCOW_ID}
+
         vacancies_processed = 0
-        average_salary = 0
+        total_vacancies = 0
+        salary = 0
 
         for page in count(0):
             params['page'] = page
@@ -70,43 +77,46 @@ def fetch_vacancies_hh():
             if 'items' not in vacancies or not vacancies['items']:
                 break
 
-            total_vacancies += vacancies['found']
+            total_vacancies = vacancies['found']
 
             for vacancy_index, vacancy_info in enumerate(vacancies['items']):
-                full_vacancy_info = vacancies["items"][vacancy_index]
-                salary = predict_rub_salary_hh(full_vacancy_info)
+                current_vacancy = vacancies["items"][vacancy_index]
+                vacancy_average_salary = predict_rub_salary_for_hh(current_vacancy)
 
-                if salary:
-                    average_salary += salary
+                if vacancy_average_salary:
+                    salary += 0
                     vacancies_processed += 1
 
-            formatted_average_salary = round(average_salary / max(vacancies_processed, 1))
+        average_salary = round(salary / max(vacancies_processed, 1)) if salary > 0 else 0
 
-            vacancies_statistic[language] = {
-                'vacancies_found': total_vacancies,
-                'vacancies_processed': vacancies_processed,
-                'average_salary': formatted_average_salary
-            }
+        vacancies_statistic[language] = {
+            'vacancies_found': total_vacancies,
+            'vacancies_processed': vacancies_processed,
+            'average_salary': average_salary
+        }
 
     return vacancies_statistic
 
 
-def fetch_vacancies_sj():
+def fetch_vacancies_sj(superjob_key):
     url = "https://api.superjob.ru/2.0/vacancies/"
 
     headers = {
-        'X-Api-App-Id': os.environ['SECRET_KEY_SUPERJOB']
+        'X-Api-App-Id': superjob_key
     }
 
     languages = ["Python", "Java", "Javascript", "Ruby", "Swift", "Go", "C", "C#", "C++", "PHP"]
     vacancies_statistic = {}
 
     for language in languages:
-        params = {'catalogues': 48, 'town': 4, 'keyword': language}
+        MOSCOW_ID = 4
+        PROGRAMMING_CATALOG_ID = 48
+
+        params = {'catalogues': PROGRAMMING_CATALOG_ID, 'town': MOSCOW_ID, 'keyword': language}
 
         total_vacancies = 0
         vacancies_processed = 0
-        average_salary = 0
+        salary = 0
 
         for page in count(0):
             params['page'] = page
@@ -119,27 +129,27 @@ def fetch_vacancies_sj():
             if 'objects' not in vacancies or not vacancies['objects']:
                 break
 
-            for vacancy_index, vacancy in enumerate(vacancies['objects']):
-                total_vacancies += vacancy['client'].get('vacancy_count', 0)
-                salary = predict_rub_salary_sj(vacancy)
+            for vacancy in vacancies['objects']:
+                total_vacancies = vacancy['client'].get('vacancy_count', 0)
+                vacancy_average_salary = predict_rub_salary_for_sj(vacancy)
 
-                if salary is not None:
-                    average_salary += salary
+                if vacancy_average_salary:
+                    salary += vacancy_average_salary
                     vacancies_processed += 1
 
-            formatted_average_salary = round(average_salary / max(vacancies_processed, 1))
+        average_salary = round(salary / max(vacancies_processed, 1)) if salary > 0 else 0
 
-            vacancies_statistic[language] = {
-                'vacancies_found': total_vacancies,
-                'average_salary': formatted_average_salary,
-                'vacancies_processed': vacancies_processed
-            }
+        vacancies_statistic[language] = {
+            'vacancies_found': total_vacancies,
+            'average_salary': average_salary,
+            'vacancies_processed': vacancies_processed
+        }
 
     return vacancies_statistic
 
 
 def structure_table(table_title, statistic):
-    table_info = [
+    table_contents = [
         ['Язык программирования', 'Найденных вакансий', 'Обработанных вакансий', 'Средняя зарплата'],
     ]
     for language in statistic:
@@ -147,16 +157,18 @@ def structure_table(table_title, statistic):
         average_salary = statistic[language].get('average_salary')
         vacancies_processed = statistic[language].get('vacancies_processed')
 
-        table_info.append([language, vacancies_found, vacancies_processed, average_salary])
+        table_contents.append([language, vacancies_found, vacancies_processed, average_salary])
 
-    return AsciiTable(table_info, table_title).table
+    return AsciiTable(table_contents, table_title).table
 
 
 def main():
     load_dotenv()
 
+    superjob_key = os.environ['SECRET_KEY_SUPERJOB']
+
     hh_stats = fetch_vacancies_hh()
-    sj_stats = fetch_vacancies_sj()
+    sj_stats = fetch_vacancies_sj(superjob_key)
 
     structure_hh_table = structure_table('HeadHunter Moscow', hh_stats)
     structure_sj_table = structure_table('SuperJob Moscow', sj_stats)
