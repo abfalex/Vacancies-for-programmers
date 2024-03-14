@@ -46,52 +46,46 @@ def predict_rub_salary_for_hh(vacancy_info):
         salary_from = vacancy_salary.get('from')
         salary_to = vacancy_salary.get('to')
 
-        salary = predict_salary(salary_from, salary_to)
+        average_salary = predict_salary(salary_from, salary_to)
 
-        if salary:
-            return salary
+        return average_salary
 
     return None
 
 
 def fetch_vacancies_hh():
     url = "https://api.hh.ru/vacancies"
-    languages = ["Python", "Java", "Javascript", "Ruby", "Swift", "Go", "C", "C#", "C++", "PHP"]
+    languages = ["Python", "Java", "C++", "PHP", "Javascript", "Ruby", "Swift", "Go", "C", "C#"],
     vacancies_statistic = {}
 
     for language in languages:
         MOSCOW_ID = 1
-
-        params = {'text': f'Программист {language}', 'area': MOSCOW_ID}
-
-        vacancies_processed = 0
-        total_vacancies = 0
-        salary = 0
+        vacancies_salary = []
 
         for page in count(0):
-            params['page'] = page
+            params = {'text': f'Программист {language}', 'area': MOSCOW_ID, 'page': page}
 
             response = requests.get(url, params=params)
             vacancies = response.json()
 
-            if 'items' not in vacancies or not vacancies['items']:
+            if page >= vacancies["pages"] - 1:
                 break
 
-            total_vacancies = vacancies['found']
+            for vacancy in vacancies.get('items', []):
+                average_salary = predict_rub_salary_for_hh(vacancy)
 
-            for vacancy_index, vacancy_info in enumerate(vacancies['items']):
-                current_vacancy = vacancies["items"][vacancy_index]
-                vacancy_average_salary = predict_rub_salary_for_hh(current_vacancy)
+                if average_salary:
+                    vacancies_salary.append(average_salary)
 
-                if vacancy_average_salary:
-                    salary += 0
-                    vacancies_processed += 1
+        average_salary = None
+        total_vacancies = vacancies['found']
 
-        average_salary = round(salary / max(vacancies_processed, 1)) if salary > 0 else 0
+        if vacancies_salary:
+            average_salary = int(sum(vacancies_salary) / len(vacancies_salary))
 
         vacancies_statistic[language] = {
             'vacancies_found': total_vacancies,
-            'vacancies_processed': vacancies_processed,
+            'vacancies_processed': len(vacancies_salary),
             'average_salary': average_salary
         }
 
@@ -100,49 +94,43 @@ def fetch_vacancies_hh():
 
 def fetch_vacancies_sj(superjob_key):
     url = "https://api.superjob.ru/2.0/vacancies/"
+    headers = {'X-Api-App-Id': superjob_key}
 
-    headers = {
-        'X-Api-App-Id': superjob_key
-    }
-
-    languages = ["Python", "Java", "Javascript", "Ruby", "Swift", "Go", "C", "C#", "C++", "PHP"]
+    languages = ["Python", "Java", "PHP", "Javascript", "Ruby", "Swift", "Go", "C", "C#", "C++"]
     vacancies_statistic = {}
 
     for language in languages:
         MOSCOW_ID = 4
         PROGRAMMING_CATALOG_ID = 48
 
-        params = {'catalogues': PROGRAMMING_CATALOG_ID, 'town': MOSCOW_ID, 'keyword': language}
-
-        total_vacancies = 0
-        vacancies_processed = 0
-        salary = 0
+        vacancies_salary = []
 
         for page in count(0):
-            params['page'] = page
+            params = {'catalogues': PROGRAMMING_CATALOG_ID, 'town': MOSCOW_ID, 'keyword': language, 'page': page}
 
             response = requests.get(url, headers=headers, params=params)
             response.raise_for_status()
-
             vacancies = response.json()
 
-            if 'objects' not in vacancies or not vacancies['objects']:
+            if not vacancies['objects']:
                 break
 
             for vacancy in vacancies['objects']:
-                total_vacancies = vacancy['client'].get('vacancy_count', 0)
-                vacancy_average_salary = predict_rub_salary_for_sj(vacancy)
+                predicted_salary = predict_rub_salary_for_sj(vacancy)
 
-                if vacancy_average_salary:
-                    salary += vacancy_average_salary
-                    vacancies_processed += 1
+                if predicted_salary:
+                    vacancies_salary.append(predicted_salary)
 
-        average_salary = round(salary / max(vacancies_processed, 1)) if salary > 0 else 0
+        total_vacancies = vacancies.get('total')
+        average_salary = None
+
+        if vacancies_salary:
+            average_salary = int(sum(vacancies_salary) / len(vacancies_salary))
 
         vacancies_statistic[language] = {
             'vacancies_found': total_vacancies,
-            'average_salary': average_salary,
-            'vacancies_processed': vacancies_processed
+            'vacancies_processed': len(vacancies_salary),
+            'average_salary': average_salary
         }
 
     return vacancies_statistic
@@ -152,10 +140,10 @@ def structure_table(table_title, statistic):
     table_contents = [
         ['Язык программирования', 'Найденных вакансий', 'Обработанных вакансий', 'Средняя зарплата'],
     ]
-    for language in statistic:
-        vacancies_found = statistic[language].get('vacancies_found')
-        average_salary = statistic[language].get('average_salary')
-        vacancies_processed = statistic[language].get('vacancies_processed')
+    for language, stats in statistic.items():
+        vacancies_found = stats.get('vacancies_found', 0)
+        vacancies_processed = stats.get('vacancies_processed', 0)
+        average_salary = stats.get('average_salary', 0)
 
         table_contents.append([language, vacancies_found, vacancies_processed, average_salary])
 
