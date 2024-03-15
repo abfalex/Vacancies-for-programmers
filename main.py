@@ -1,7 +1,6 @@
 import os
 import requests
 
-from pprint import pprint
 from itertools import count
 from dotenv import load_dotenv
 from terminaltables import AsciiTable
@@ -60,7 +59,7 @@ def fetch_vacancies_hh():
 
     for language in languages:
         MOSCOW_ID = 1
-        vacancies_salary = []
+        vacancy_salary = []
 
         for page in count(0):
             params = {'text': f'Программист {language}', 'area': MOSCOW_ID, 'page': page}
@@ -75,17 +74,17 @@ def fetch_vacancies_hh():
                 average_salary = predict_rub_salary_for_hh(vacancy)
 
                 if average_salary:
-                    vacancies_salary.append(average_salary)
+                    vacancy_salary.append(average_salary)
 
         average_salary = None
         total_vacancies = vacancies['found']
 
-        if vacancies_salary:
-            average_salary = int(sum(vacancies_salary) / len(vacancies_salary))
+        if vacancy_salary:
+            average_salary = int(sum(vacancy_salary) / len(vacancy_salary))
 
         vacancies_statistic[language] = {
             'vacancies_found': total_vacancies,
-            'vacancies_processed': len(vacancies_salary),
+            'vacancies_processed': len(vacancy_salary),
             'average_salary': average_salary
         }
 
@@ -103,7 +102,7 @@ def fetch_vacancies_sj(superjob_key):
         MOSCOW_ID = 4
         PROGRAMMING_CATALOG_ID = 48
 
-        vacancies_salary = []
+        vacancy_salary = []
 
         for page in count(0):
             params = {'catalogues': PROGRAMMING_CATALOG_ID, 'town': MOSCOW_ID, 'keyword': language, 'page': page}
@@ -119,17 +118,17 @@ def fetch_vacancies_sj(superjob_key):
                 predicted_salary = predict_rub_salary_for_sj(vacancy)
 
                 if predicted_salary:
-                    vacancies_salary.append(predicted_salary)
+                    vacancy_salary.append(predicted_salary)
 
         total_vacancies = vacancies.get('total')
         average_salary = None
 
-        if vacancies_salary:
-            average_salary = int(sum(vacancies_salary) / len(vacancies_salary))
+        if vacancy_salary:
+            average_salary = int(sum(vacancy_salary) / len(vacancy_salary))
 
         vacancies_statistic[language] = {
             'vacancies_found': total_vacancies,
-            'vacancies_processed': len(vacancies_salary),
+            'vacancies_processed': len(vacancy_salary),
             'average_salary': average_salary
         }
 
