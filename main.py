@@ -19,10 +19,10 @@ def predict_salary(salary_from, salary_to):
     return None
 
 
-def predict_rub_salary_for_sj(vacancy_info):
-    salary_from = vacancy_info.get('payment_from')
-    salary_to = vacancy_info.get('payment_to')
-    vacancy_currency = vacancy_info.get('currency')
+def predict_rub_salary_for_sj(vacancy):
+    salary_from = vacancy.get('payment_from')
+    salary_to = vacancy.get('payment_to')
+    vacancy_currency = vacancy.get('currency')
 
     salary = predict_salary(salary_from, salary_to)
 
@@ -35,21 +35,21 @@ def predict_rub_salary_for_sj(vacancy_info):
     return None
 
 
-def predict_rub_salary_for_hh(vacancy_info):
-    vacancy_salary = vacancy_info.get('salary', None)
+def predict_rub_salary_for_hh(vacancy):
+    vacancy_salary = vacancy.get('salary', None)
 
-    if vacancy_salary and vacancy_salary['currency']:
-        if vacancy_salary['currency'] != "RUR":
-            return None
+    if not vacancy_salary:
+        return None
 
-        salary_from = vacancy_salary.get('from')
-        salary_to = vacancy_salary.get('to')
+    if vacancy_salary['currency'] != "RUR":
+        return None
 
-        average_salary = predict_salary(salary_from, salary_to)
+    salary_from = vacancy_salary.get('from')
+    salary_to = vacancy_salary.get('to')
 
-        return average_salary
+    average_salary = predict_salary(salary_from, salary_to)
 
-    return None
+    return average_salary
 
 
 def fetch_vacancies_hh():
@@ -58,13 +58,14 @@ def fetch_vacancies_hh():
     vacancies_statistic = {}
 
     for language in languages:
-        MOSCOW_ID = 1
+        moscow_id = 1
         vacancy_salary = []
 
         for page in count(0):
-            params = {'text': f'Программист {language}', 'area': MOSCOW_ID, 'page': page}
+            params = {'text': f'Программист {language}', 'area': moscow_id, 'page': page}
 
             response = requests.get(url, params=params)
+            response.raise_for_status()
             vacancies = response.json()
 
             if page >= vacancies["pages"] - 1:
@@ -99,13 +100,13 @@ def fetch_vacancies_sj(superjob_key):
     vacancies_statistic = {}
 
     for language in languages:
-        MOSCOW_ID = 4
-        PROGRAMMING_CATALOG_ID = 48
+        moscow_id = 4
+        programming_catalog_id = 48
 
         vacancy_salary = []
 
         for page in count(0):
-            params = {'catalogues': PROGRAMMING_CATALOG_ID, 'town': MOSCOW_ID, 'keyword': language, 'page': page}
+            params = {'catalogues': programming_catalog_id, 'town': moscow_id, 'keyword': language, 'page': page}
 
             response = requests.get(url, headers=headers, params=params)
             response.raise_for_status()
